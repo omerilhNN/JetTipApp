@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +26,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -38,15 +40,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.omrilhn.jettipapp.components.InputField
 import com.omrilhn.jettipapp.ui.theme.JetTipAppTheme
+import com.omrilhn.jettipapp.utils.calculateTotalPerPerson
+import com.omrilhn.jettipapp.utils.calculateTotalTip
 import com.omrilhn.jettipapp.widgets.RoundIconButton
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MyApp {
                 //topHeader()
-                MainContent()
+               TipCalculator()
             }
         }
     }
@@ -61,12 +66,22 @@ fun MyApp(content: @Composable () -> Unit){
         }
     }
 }
+@ExperimentalComposeUiApi
+@Composable
+fun TipCalculator() {
+    Surface(modifier = Modifier.padding(12.dp)) {
+        Column() {
+            MainContent()
+        }
+    }
+}
 //@Preview
 @Composable
 fun topHeader(totalPerPerson : Double = 134.0)
 {//clip: For give a shape to the container
     Surface(modifier = Modifier
         .fillMaxWidth()
+        .padding(20.dp)
         .height(150.dp)
         .clip(shape = RoundedCornerShape(corner = CornerSize(12.dp)))
         ,color = Color(0xFFB160BF)
@@ -84,11 +99,22 @@ fun topHeader(totalPerPerson : Double = 134.0)
     }
 }
 @OptIn(ExperimentalComposeUiApi::class)
-@Preview
 @Composable
 fun MainContent()
 {
-    BillForm(){billAmount->
+    val splitByState = remember{
+        mutableStateOf(1)
+    }
+    val range = IntRange(start = 1, endInclusive = 100)
+
+    val tipAmountState = remember {
+        mutableStateOf(0.0)
+    }
+    val totalPerPersonState = remember {
+        mutableStateOf(0.0)
+    }
+    BillForm(splitByState = splitByState,
+        tipAmountState){billAmount->
         Log.d("AMT","Main Content: $billAmount")//
     }
 
@@ -96,19 +122,15 @@ fun MainContent()
 
 
 
-//@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    JetTipAppTheme {
-        MyApp {
-            Text("Hello again!")
-        }
-    }
-}
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun BillForm(modifier : Modifier = Modifier,
-            onValChange : (String) -> Unit = {}
+             range: IntRange = 1..100,
+             splitByState: MutableState<Int>,
+             tipAmountState: MutableState<Double>,
+             totalPerPerson: MutableState<Double>,
+            onValChange : (String) -> Unit = {},
                  ){
     val totalBillState = remember{
         mutableStateOf("")
@@ -121,7 +143,9 @@ fun BillForm(modifier : Modifier = Modifier,
     val sliderPositionState = remember{
         mutableStateOf(0f)
     }
+    val tipPercentage = (sliderPositionState.value *100).toInt()
 
+    topHeader(totalPerPerson = totalPerPersonState.value)
     Surface(modifier = Modifier
         .padding(2.dp)
         .fillMaxWidth(),shape = RoundedCornerShape(corner = CornerSize(8.dp)),
@@ -132,11 +156,11 @@ fun BillForm(modifier : Modifier = Modifier,
         {
             InputField(valueState = totalBillState , labelId ="Enter Bill" , enabled = true , isSingleLine = true,
                 onAction = KeyboardActions{
-                    if(!validState) return@KeyboardActions
+                    //if(!validState) return@KeyboardActions
                         onValChange(totalBillState.value.trim())
                     keyboardController?.hide()
                 })
-            //if(validState){
+            if(validState){
                 Row(modifier = Modifier.padding(3.dp),
                     horizontalArrangement = Arrangement.Start){
                     Text("Split",
@@ -148,15 +172,31 @@ fun BillForm(modifier : Modifier = Modifier,
                             horizontalArrangement = Arrangement.End
                             ){  
                             RoundIconButton( imageVector = Icons.Default.Remove,
-                                onClick = { /*TODO*/ })
+                                onClick = {
+                                    splitByState.value =
+                                        if(splitByState.value > 1) splitByState.value -1 else 1
+                                    totalPerPersonState.value =
+                                        calculateTotalPerPerson(totalBill = totalBillState.value.toDouble(),
+                                            splitBy = splitByState.value,
+                                            tipPercentage = tipPercentage)
+                                })
 
-                            Text("2",modifier = Modifier
+                            Text("${splitByState.value}",modifier = Modifier
                                 .align(Alignment.CenterVertically)
                                 .padding(start = 9.dp, end = 9.dp))
 
                             RoundIconButton(
                                 imageVector = Icons.Default.Add
-                                , onClick = { /*TODO*/ })
+                                , onClick = {
+                                    if(splitByState.value < range.last){
+                                        splitByState.value = splitByState.value +1
+
+                                        totalPerPersonState.value =
+                                            calculateTotalPerPerson(totalBill = totalBillState.value.toDouble(),
+                                                splitBy = splitByState.value,
+                                                tipPercentage = tipPercentage)
+                                    }
+                                })
 
                         }
                 }
@@ -167,29 +207,47 @@ fun BillForm(modifier : Modifier = Modifier,
 
                 Spacer(modifier = Modifier.width(200.dp))
 
-                Text(text = "$33.00",
+                Text(text = "$ ${tipAmountState.value}",
                     modifier = Modifier.align(alignment = Alignment.CenterVertically))
             }
             Column(verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally){
 
-                Text(text = "%33")
+                Text(text = "$tipPercentage %")
                 Spacer(modifier = Modifier.height(14.dp))
 
                 //Slider
                 Slider(value = sliderPositionState.value,
                     onValueChange ={ newVal->
                         sliderPositionState.value = newVal
-                        Log.d("Slider","BillForm:$newVal")
+                       tipAmountState.value =
+                           calculateTotalTip(totalBill = totalBillState.value.toDouble(),tipPercentage = tipPercentage)
 
-                } )
-
-
+                            totalPerPersonState.value =
+                            calculateTotalPerPerson(totalBill = totalBillState.value.toDouble(),
+                                splitBy = splitByState.value,
+                                tipPercentage = tipPercentage)
+                },modifier = Modifier.padding(start=16.dp,end = 16.dp),
+                    steps = 5,
+                    onValueChangeFinished = {
+                        Log.d("Finish", "OVC finished")
+                    }
+                )
             }
-    //        }else{
-      //      }
-
+            }else{
+                Box()
+                {
+                }
+            }
         }
-
     }
 }
+@ExperimentalComposeUiApi
+@Preview(showBackground = true)
+@Composable
+fun DefaultPreview() {
+    MyApp {
+        TipCalculator()
+    }
+}
+

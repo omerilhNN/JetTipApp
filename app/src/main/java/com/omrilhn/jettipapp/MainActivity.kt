@@ -113,10 +113,14 @@ fun MainContent()
     val totalPerPersonState = remember {
         mutableStateOf(0.0)
     }
-    BillForm(splitByState = splitByState,
-        tipAmountState){billAmount->
-        Log.d("AMT","Main Content: $billAmount")//
+    Column(modifier = Modifier.padding(all=12.dp)){
+        BillForm(splitByState = splitByState,
+            tipAmountState= tipAmountState,
+            totalPerPersonState = totalPerPersonState ){billAmount->
+            Log.d("AMT","Main Content: $billAmount")//
+        }
     }
+
 
 }
 
@@ -129,7 +133,7 @@ fun BillForm(modifier : Modifier = Modifier,
              range: IntRange = 1..100,
              splitByState: MutableState<Int>,
              tipAmountState: MutableState<Double>,
-             totalPerPerson: MutableState<Double>,
+             totalPerPersonState: MutableState<Double>,
             onValChange : (String) -> Unit = {},
                  ){
     val totalBillState = remember{
@@ -146,7 +150,7 @@ fun BillForm(modifier : Modifier = Modifier,
     val tipPercentage = (sliderPositionState.value *100).toInt()
 
     topHeader(totalPerPerson = totalPerPersonState.value)
-    Surface(modifier = Modifier
+    Surface(modifier = modifier
         .padding(2.dp)
         .fillMaxWidth(),shape = RoundedCornerShape(corner = CornerSize(8.dp)),
         border = BorderStroke(width = 1.dp,color = Color.LightGray)){
@@ -161,7 +165,7 @@ fun BillForm(modifier : Modifier = Modifier,
                     keyboardController?.hide()
                 })
             if(validState){
-                Row(modifier = Modifier.padding(3.dp),
+                Row(modifier = modifier.padding(3.dp),
                     horizontalArrangement = Arrangement.Start){
                     Text("Split",
                         modifier = Modifier.align(
@@ -181,7 +185,7 @@ fun BillForm(modifier : Modifier = Modifier,
                                             tipPercentage = tipPercentage)
                                 })
 
-                            Text("${splitByState.value}",modifier = Modifier
+                            Text("${splitByState.value}",modifier = modifier
                                 .align(Alignment.CenterVertically)
                                 .padding(start = 9.dp, end = 9.dp))
 
@@ -201,7 +205,7 @@ fun BillForm(modifier : Modifier = Modifier,
                         }
                 }
             //Tip Row
-            Row (modifier = Modifier.padding(horizontal = 3.dp,vertical=12.dp)){
+            Row (modifier = modifier.padding(horizontal = 3.dp,vertical=12.dp)){
                 Text(text = "Amount",
                     modifier = Modifier.align(alignment = Alignment.CenterVertically))
 
